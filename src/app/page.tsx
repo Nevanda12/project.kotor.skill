@@ -24,7 +24,9 @@ import {
 import { toast } from '@/hooks/use-toast'
 import DataInitializer from '@/components/DataInitializer'
 
-// Types
+// ==========================================
+// TYPES & INTERFACES
+// ==========================================
 interface User {
   id: string
   name: string
@@ -59,8 +61,160 @@ interface SwapRequest {
   skillBName?: string
 }
 
+// ==========================================
+// COMPONENT: LOGIN & REGISTER PAGE
+// ==========================================
+function LoginPage({ onLogin, loadData }: { onLogin: (email: string) => void, loadData: () => void }) {
+  const [isLoginMode, setIsLoginMode] = useState(true)
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    
+    if (isLoginMode) {
+      // PROSES LOGIN
+      setTimeout(() => {
+        setIsLoading(false)
+        onLogin(email) 
+      }, 1000)
+    } else {
+      // PROSES REGISTER (Mendaftar akun baru ke database)
+      try {
+        const res = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            name: name, 
+            email: email,
+            role: 'USER' 
+          })
+        })
+
+        const data = await res.json()
+
+        if (res.ok) {
+          toast({
+            title: 'Pendaftaran Berhasil!',
+            description: 'Akun Anda telah dibuat. Silakan login.',
+          })
+          setIsLoginMode(true) // Pindahkan user kembali ke tab login
+          loadData() // Refresh data user di sistem utama
+        } else {
+          toast({
+            title: 'Pendaftaran Gagal',
+            description: data.error || 'Terjadi kesalahan.',
+            variant: 'destructive'
+          })
+        }
+      } catch (error) {
+        console.error('Register error:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <Card className="w-full max-w-md shadow-lg border-t-4 border-t-indigo-600">
+        <CardHeader className="text-center space-y-2">
+          <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-2">
+            <ArrowRightLeft className="w-6 h-6 text-indigo-600" />
+          </div>
+          <CardTitle className="text-2xl font-bold text-gray-900">
+            {isLoginMode ? 'Masuk ke SkillSwap' : 'Daftar Akun Baru'}
+          </CardTitle>
+          <CardDescription>
+            {isLoginMode ? 'Platform barter keahlian pertama untuk mahasiswa.' : 'Bergabunglah untuk mulai bertukar keahlian.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {/* Tampilkan field Nama hanya saat mode pendaftaran */}
+            {!isLoginMode && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
+                <input
+                  type="text"
+                  required={!isLoginMode}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Email Kampus / Umum</label>
+              <input
+                type="email"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                placeholder="nama@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Password</label>
+              <input
+                type="password"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Memproses...' : (isLoginMode ? 'Masuk Sekarang' : 'Daftar Akun')}
+            </Button>
+            
+            {/* Tombol Toggle Login/Register */}
+            <p className="text-center text-sm text-gray-600 mt-4">
+              {isLoginMode ? "Belum punya akun? " : "Sudah punya akun? "}
+              <button 
+                type="button" 
+                onClick={() => setIsLoginMode(!isLoginMode)}
+                className="text-indigo-600 font-semibold hover:underline"
+              >
+                {isLoginMode ? "Daftar di sini" : "Login di sini"}
+              </button>
+            </p>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-gray-500">Atau</span></div>
+            </div>
+            
+            <Button type="button" variant="outline" className="w-full" onClick={() => toast({ title: 'Fitur Belum Tersedia', description: 'Google Login butuh setup NextAuth dan ClientID Google Cloud.' })}>
+              Lanjutkan dengan Google
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ==========================================
+// MAIN APP COMPONENT
+// ==========================================
 export default function SkillSwapPlatform() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [activeTab, setActiveTab] = useState('dashboard')
   const [role, setRole] = useState<'USER' | 'ADMIN'>('USER')
   const [skills, setSkills] = useState<Skill[]>([])
@@ -75,34 +229,40 @@ export default function SkillSwapPlatform() {
 
   const loadInitialData = async () => {
     try {
-      // Load skills
       const skillsRes = await fetch('/api/skills')
-      if (skillsRes.ok) {
-        const skillsData = await skillsRes.json()
-        setSkills(skillsData)
-      }
+      if (skillsRes.ok) setSkills(await skillsRes.json())
 
-      // Load swap requests
       const swapsRes = await fetch('/api/swaps')
-      if (swapsRes.ok) {
-        const swapsData = await swapsRes.json()
-        setSwapRequests(swapsData)
-      }
+      if (swapsRes.ok) setSwapRequests(await swapsRes.json())
 
-      // Load users
       const usersRes = await fetch('/api/users')
-      if (usersRes.ok) {
-        const usersData = await usersRes.json()
-        setUsers(usersData)
-        // Set current user as first user for demo
-        if (usersData.length > 0) {
-          setCurrentUser(usersData[0])
-        }
-      }
+      if (usersRes.ok) setUsers(await usersRes.json())
+      
     } catch (error) {
       console.error('Error loading initial data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Handle Login Logic
+  const handleLogin = (email: string) => {
+    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase())
+    
+    if (foundUser) {
+      setCurrentUser(foundUser)
+      setRole(foundUser.role)
+      setIsAuthenticated(true)
+      toast({
+        title: 'Login Berhasil',
+        description: `Selamat datang kembali, ${foundUser.name}!`,
+      })
+    } else {
+      toast({
+        title: 'Akun Tidak Ditemukan',
+        description: 'Pastikan email yang Anda masukkan sudah terdaftar di sistem.',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -119,6 +279,7 @@ export default function SkillSwapPlatform() {
     })
   }
 
+  // Tampilkan Loading State
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -130,11 +291,21 @@ export default function SkillSwapPlatform() {
     )
   }
 
+  // PROTEKSI APLIKASI: Harus Login!
+  if (!isAuthenticated) {
+    return (
+      <>
+        <DataInitializer />
+        <LoginPage onLogin={handleLogin} loadData={loadInitialData} />
+      </>
+    )
+  }
+
   return (
     <>
       <DataInitializer />
       <SidebarProvider>
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-gray-50 w-full">
         {/* Sidebar Navigation */}
         <Sidebar className="border-r border-gray-200">
           <SidebarHeader className="p-6 border-b border-gray-200">
@@ -245,10 +416,21 @@ export default function SkillSwapPlatform() {
                 <Button 
                   variant="secondary" 
                   size="sm" 
-                  className="w-full bg-white/10 hover:bg-white/20 text-white"
+                  className="w-full bg-white/10 hover:bg-white/20 text-white mb-2"
                   onClick={switchRole}
                 >
                   Switch to {role === 'USER' ? 'Admin' : 'User'}
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => {
+                    setIsAuthenticated(false)
+                    setCurrentUser(null)
+                  }}
+                >
+                  Keluar (Logout)
                 </Button>
               </CardContent>
             </Card>
@@ -258,7 +440,6 @@ export default function SkillSwapPlatform() {
         {/* Main Content */}
         <main className="flex-1 p-6 md:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto">
-            {/* Header */}
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 {role === 'USER' ? 'Dashboard Pengguna' : 'Dashboard Admin'}
@@ -270,7 +451,6 @@ export default function SkillSwapPlatform() {
               </p>
             </div>
 
-            {/* User Dashboard Content */}
             {role === 'USER' && (
               <UserDashboard
                 currentUser={currentUser}
@@ -283,7 +463,6 @@ export default function SkillSwapPlatform() {
               />
             )}
 
-            {/* Admin Dashboard Content */}
             {role === 'ADMIN' && (
               <AdminDashboard
                 activeTab={activeTab}
@@ -297,26 +476,30 @@ export default function SkillSwapPlatform() {
           </div>
         </main>
       </div>
-    </SidebarProvider>
+      </SidebarProvider>
     </>
   )
 }
 
+// ==========================================
+// SUB-COMPONENTS
+// ==========================================
+
 // User Dashboard Component
 function UserDashboard({ currentUser, activeTab, skills, swapRequests, users, setActiveTab, loadData }: any) {
-  const userSkills = skills.filter(s => s.userId === currentUser?.id)
-  const offeredSkills = userSkills.filter(s => s.type === 'OFFERED')
-  const neededSkills = userSkills.filter(s => s.type === 'NEEDED')
+  const userSkills = skills.filter((s: Skill) => s.userId === currentUser?.id)
+  const offeredSkills = userSkills.filter((s: Skill) => s.type === 'OFFERED')
+  const neededSkills = userSkills.filter((s: Skill) => s.type === 'NEEDED')
   
   const userSwaps = swapRequests.filter(
-    s => s.userAId === currentUser?.id || s.userBId === currentUser?.id
+    (s: SwapRequest) => s.userAId === currentUser?.id || s.userBId === currentUser?.id
   )
 
-  const pendingSwaps = userSwaps.filter(s => s.state === 'PROPOSED' && s.userBId === currentUser?.id)
-  const activeSwaps = userSwaps.filter(s => ['ACCEPTED', 'IN_PROGRESS'].includes(s.state))
-  const completedSwaps = userSwaps.filter(s => s.state === 'COMPLETED')
+  const pendingSwaps = userSwaps.filter((s: SwapRequest) => s.state === 'PROPOSED' && s.userBId === currentUser?.id)
+  const activeSwaps = userSwaps.filter((s: SwapRequest) => ['ACCEPTED', 'IN_PROGRESS'].includes(s.state))
+  const completedSwaps = userSwaps.filter((s: SwapRequest) => s.state === 'COMPLETED')
 
-  // 👇 TAMBAHKAN FUNGSI INI DI SINI 👇
+  // FUNGSI UPDATE STATUS SWAP
   const handleSwapAction = async (swapId: string, action: 'ACCEPTED' | 'REJECTED') => {
     try {
       const res = await fetch(`/api/swaps/${swapId}`, {
@@ -330,13 +513,12 @@ function UserDashboard({ currentUser, activeTab, skills, swapRequests, users, se
           title: 'Status diperbarui',
           description: `Pertukaran telah ${action === 'ACCEPTED' ? 'Diterima' : 'Ditolak'}`,
         })
-        loadData() // Memanggil refresh UI seketika!
+        loadData() 
       }
     } catch (error) {
       console.error('Error updating swap:', error)
     }
   }
-  // 👆 SAMPAI SINI 👆
 
   if (activeTab === 'dashboard') {
     return (
@@ -381,7 +563,7 @@ function UserDashboard({ currentUser, activeTab, skills, swapRequests, users, se
             <CardContent>
               <div className="space-y-3">
                 {pendingSwaps.map((swap: SwapRequest) => {
-                  const requester = users.find(u => u.id === swap.userAId)
+                  const requester = users.find((u: User) => u.id === swap.userAId)
                   return (
                     <div key={swap.id} className="bg-white p-4 rounded-lg border border-amber-200 flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -451,7 +633,7 @@ function UserDashboard({ currentUser, activeTab, skills, swapRequests, users, se
                 {userSwaps.slice(0, 5).map((swap: SwapRequest) => (
                   <SwapRequestCard key={swap.id} swap={swap} currentUser={currentUser} users={users} />
                 ))}
- </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -459,38 +641,9 @@ function UserDashboard({ currentUser, activeTab, skills, swapRequests, users, se
     )
   }
 
-  if (activeTab === 'skills') {
-    return (
-      <SkillsManagement
-        currentUser={currentUser}
-        skills={skills}
-        loadData={loadData}
-      />
-    )
-  }
-
-  if (activeTab === 'matches') {
-    return (
-      <MatchingSystem
-        currentUser={currentUser}
-        skills={skills}
-        users={users}
-        swapRequests={swapRequests}
-        loadData={loadData}
-      />
-    )
-  }
-
-  if (activeTab === 'swaps') {
-    return (
-      <SwapRequestsList
-        currentUser={currentUser}
-        swapRequests={swapRequests}
-        users={users}
-        loadData={loadData}
-      />
-    )
-  }
+  if (activeTab === 'skills') return <SkillsManagement currentUser={currentUser} skills={skills} loadData={loadData} />
+  if (activeTab === 'matches') return <MatchingSystem currentUser={currentUser} skills={skills} users={users} swapRequests={swapRequests} loadData={loadData} />
+  if (activeTab === 'swaps') return <SwapRequestsList currentUser={currentUser} swapRequests={swapRequests} users={users} loadData={loadData} />
 
   return null
 }
@@ -510,26 +663,14 @@ function AdminDashboard({ activeTab, loadData }: any) {
   const loadAdminData = async () => {
     setLoading(true)
     try {
-      // Load metrics
       const metricsRes = await fetch('/api/admin/metrics')
-      if (metricsRes.ok) {
-        const metricsData = await metricsRes.json()
-        setMetrics(metricsData)
-      }
+      if (metricsRes.ok) setMetrics(await metricsRes.json())
 
-      // Load users with skills
       const usersRes = await fetch('/api/admin/users?includeSkills=true')
-      if (usersRes.ok) {
-        const usersData = await usersRes.json()
-        setUsers(usersData)
-      }
+      if (usersRes.ok) setUsers(await usersRes.json())
 
-      // Load swaps
       const swapsRes = await fetch(`/api/admin/swaps?state=${swapFilter}`)
-      if (swapsRes.ok) {
-        const swapsData = await swapsRes.json()
-        setSwaps(swapsData)
-      }
+      if (swapsRes.ok) setSwaps(await swapsRes.json())
     } catch (error) {
       console.error('Error loading admin data:', error)
     } finally {
@@ -544,16 +685,12 @@ function AdminDashboard({ activeTab, loadData }: any) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive })
       })
-
       if (res.ok) {
-        toast({
-          title: isActive ? 'User diaktifkan' : 'User ditangguhkan',
-          description: isActive ? 'User sekarang aktif' : 'User telah disuspend',
-        })
+        toast({ title: isActive ? 'User diaktifkan' : 'User ditangguhkan' })
         loadAdminData()
       }
     } catch (error) {
-      console.error('Error toggling user status:', error)
+      console.error(error)
     }
   }
 
@@ -564,38 +701,25 @@ function AdminDashboard({ activeTab, loadData }: any) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state: newState })
       })
-
       if (res.ok) {
-        toast({
-          title: 'Status diperbarui',
-          description: `Pertukaran diperbarui ke ${newState}`,
-        })
+        toast({ title: 'Status diperbarui' })
         loadAdminData()
       }
     } catch (error) {
-      console.error('Error updating swap:', error)
+      console.error(error)
     }
   }
 
   const handleDeleteSwap = async (swapId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus pertukaran ini?')) {
-      return
-    }
-
+    if (!confirm('Apakah Anda yakin ingin menghapus pertukaran ini?')) return
     try {
-      const res = await fetch(`/api/swaps/${swapId}`, {
-        method: 'DELETE'
-      })
-
+      const res = await fetch(`/api/swaps/${swapId}`, { method: 'DELETE' })
       if (res.ok) {
-        toast({
-          title: 'Pertukaran dihapus',
-          description: 'Pertukaran telah dihapus dari platform',
-        })
+        toast({ title: 'Pertukaran dihapus' })
         loadAdminData()
       }
     } catch (error) {
-      console.error('Error deleting swap:', error)
+      console.error(error)
     }
   }
 
@@ -603,13 +727,7 @@ function AdminDashboard({ activeTab, loadData }: any) {
     loadAdminData()
   }, [swapFilter])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    )
-  }
+  if (loading) return <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
 
   if (activeTab === 'admin-users') {
     return (
@@ -618,8 +736,6 @@ function AdminDashboard({ activeTab, loadData }: any) {
           <h3 className="text-2xl font-bold mb-2">Manajemen User</h3>
           <p className="text-gray-600">Kelola semua pengguna dan lihat detail keahlian mereka</p>
         </div>
-
-        {/* Users Table */}
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -647,50 +763,18 @@ function AdminDashboard({ activeTab, loadData }: any) {
                           <div>
                             <p className="font-semibold">{user.name}</p>
                             <p className="text-sm text-gray-600">{user.email}</p>
-                            {user.bio && <p className="text-xs text-gray-500 mt-1">{user.bio.substring(0, 50)}...</p>}
                           </div>
                         </div>
                       </td>
+                      <td className="px-4 py-4"><Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>{user.role}</Badge></td>
+                      <td className="px-4 py-4"><Star className="w-4 h-4 fill-amber-400 text-amber-400 inline" /> {user.rating.toFixed(1)}</td>
                       <td className="px-4 py-4">
-                        <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>
-                          {user.role}
-                        </Badge>
+                        <Badge variant="outline" className="text-xs mr-1">{user.skills?.offered?.length || 0} Offered</Badge>
+                        <Badge variant="outline" className="text-xs">{user.skills?.needed?.length || 0} Needed</Badge>
                       </td>
+                      <td className="px-4 py-4"><Badge className={user.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{user.isActive ? 'Aktif' : 'Suspend'}</Badge></td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                          <span className="font-medium">{user.rating.toFixed(1)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="space-y-1">
-                          <div className="flex gap-1">
-                            <Badge variant="outline" className="text-xs">
-                              {user.skills?.offered?.length || 0} Offered
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {user.skills?.needed?.length || 0} Needed
-                            </Badge>
-                          </div>
-                          {user.skills && user.skills.offered.length > 0 && (
-                            <div className="text-xs text-gray-600">
-                              {user.skills.offered.map(s => s.skillName).join(', ')}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <Badge className={user.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
-                          {user.isActive ? 'Aktif' : 'Suspend'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-4">
-                        <Button
-                          size="sm"
-                          variant={user.isActive ? 'outline' : 'default'}
-                          onClick={() => handleToggleUserStatus(user.id, !user.isActive)}
-                          disabled={user.role === 'ADMIN'}
-                        >
+                        <Button size="sm" variant={user.isActive ? 'outline' : 'default'} onClick={() => handleToggleUserStatus(user.id, !user.isActive)} disabled={user.role === 'ADMIN'}>
                           {user.isActive ? 'Suspend' : 'Activate'}
                         </Button>
                       </td>
@@ -711,15 +795,10 @@ function AdminDashboard({ activeTab, loadData }: any) {
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-2xl font-bold mb-2">Monitoring Skill Swap</h3>
-            <p className="text-gray-600">Pantau dan kelola semua pertukaran keahlian</p>
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium">Filter State:</label>
-            <select
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
-              value={swapFilter}
-              onChange={(e) => setSwapFilter(e.target.value)}
-            >
+            <select className="px-3 py-2 border rounded-lg" value={swapFilter} onChange={(e) => setSwapFilter(e.target.value)}>
               <option value="ALL">Semua</option>
               <option value="PROPOSED">Diajukan</option>
               <option value="ACCEPTED">Diterima</option>
@@ -729,118 +808,35 @@ function AdminDashboard({ activeTab, loadData }: any) {
             </select>
           </div>
         </div>
-
-        {/* Swaps Table */}
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto max-h-[600px]">
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Swap ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">User A</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">User B</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Skills</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Match Score</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">State</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                    <th className="px-4 py-3 text-left">Swap ID</th>
+                    <th className="px-4 py-3 text-left">User A</th>
+                    <th className="px-4 py-3 text-left">User B</th>
+                    <th className="px-4 py-3 text-left">Skills</th>
+                    <th className="px-4 py-3 text-left">Score</th>
+                    <th className="px-4 py-3 text-left">State</th>
+                    <th className="px-4 py-3 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {swaps.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                        Tidak ada pertukaran
+                  {swaps.map((swap) => (
+                    <tr key={swap.id}>
+                      <td className="px-4 py-4 text-sm font-mono">{swap.id.substring(0, 8)}</td>
+                      <td className="px-4 py-4">{swap.userAName}</td>
+                      <td className="px-4 py-4">{swap.userBName}</td>
+                      <td className="px-4 py-4 text-sm">{swap.skillAName} ↔ {swap.skillBName}</td>
+                      <td className="px-4 py-4">{(swap.matchScore * 100).toFixed(0)}%</td>
+                      <td className="px-4 py-4"><SwapStateBadge state={swap.state} /></td>
+                      <td className="px-4 py-4">
+                        <Button size="sm" variant="outline" onClick={() => handleDeleteSwap(swap.id)} disabled={['COMPLETED', 'REJECTED'].includes(swap.state)}>Hapus</Button>
                       </td>
                     </tr>
-                  ) : (
-                    swaps.map((swap) => (
-                      <tr key={swap.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-sm font-mono">{swap.id.substring(0, 8)}...</td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-medium">{swap.userAName}</p>
-                            <Badge className={`mt-1 ${swap.userAActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                              {swap.userAActive ? 'Aktif' : 'Suspend'}
-                            </Badge>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-medium">{swap.userBName}</p>
-                            <Badge className={`mt-1 ${swap.userBActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                              {swap.userBActive ? 'Aktif' : 'Suspend'}
-                            </Badge>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm">
-                            <div className="font-medium text-indigo-600">{swap.skillAName}</div>
-                            <div className="text-gray-600">↔</div>
-                            <div className="font-medium text-emerald-600">{swap.skillBName}</div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <Badge className="bg-indigo-100 text-indigo-700">
-                            {(swap.matchScore * 100).toFixed(0)}%
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-4">
-                          <SwapStateBadge state={swap.state} />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex flex-col gap-2">
-                            <div className="flex gap-1">
-                              {swap.state === 'PROPOSED' && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    className="bg-emerald-600 hover:bg-emerald-700"
-                                    onClick={() => handleSwapAction(swap.id, 'ACCEPTED')}
-                                  >
-                                    Accept
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => handleSwapAction(swap.id, 'REJECTED')}
-                                  >
-                                    Reject
-                                  </Button>
-                                </>
-                              )}
-                              {swap.state === 'ACCEPTED' && (
-                                <Button
-                                  size="sm"
-                                  className="bg-blue-600 hover:bg-blue-700"
-                                  onClick={() => handleSwapAction(swap.id, 'IN_PROGRESS')}
-                                >
-                                  Start
-                                </Button>
-                              )}
-                              {swap.state === 'IN_PROGRESS' && (
-                                <Button
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700"
-                                  onClick={() => handleSwapAction(swap.id, 'COMPLETED')}
-                                >
-                                  Complete
-                                </Button>
-                              )}
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteSwap(swap.id)}
-                              disabled={['COMPLETED', 'REJECTED'].includes(swap.state)}
-                            >
-                              Hapus
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -855,10 +851,7 @@ function AdminDashboard({ activeTab, loadData }: any) {
 function SkillsManagement({ currentUser, skills, loadData }: any) {
   const [showAddSkill, setShowAddSkill] = useState(false)
   const [formData, setFormData] = useState({
-    skillName: '',
-    skillCategory: '',
-    skillLevel: 'Beginner' as 'Beginner' | 'Intermediate' | 'Expert',
-    type: 'OFFERED' as 'OFFERED' | 'NEEDED'
+    skillName: '', skillCategory: '', skillLevel: 'Beginner' as any, type: 'OFFERED' as any
   })
 
   const userSkills = skills.filter((s: Skill) => s.userId === currentUser?.id)
@@ -869,47 +862,25 @@ function SkillsManagement({ currentUser, skills, loadData }: any) {
       const res = await fetch('/api/skills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          userId: currentUser?.id
-        })
+        body: JSON.stringify({ ...formData, userId: currentUser?.id })
       })
-
       if (res.ok) {
-        toast({
-          title: 'Keahlian berhasil ditambahkan',
-          description: `Keahlian "${formData.skillName}" telah ditambahkan ke profil Anda`,
-        })
-        setFormData({
-          skillName: '',
-          skillCategory: '',
-          skillLevel: 'Beginner',
-          type: 'OFFERED'
-        })
+        toast({ title: 'Keahlian berhasil ditambahkan' })
+        setFormData({ skillName: '', skillCategory: '', skillLevel: 'Beginner', type: 'OFFERED' })
         setShowAddSkill(false)
         loadData()
       }
-    } catch (error) {
-      console.error('Error adding skill:', error)
-    }
+    } catch (error) { console.error(error) }
   }
 
   const handleDelete = async (skillId: string) => {
     try {
-      const res = await fetch(`/api/skills/${skillId}`, {
-        method: 'DELETE'
-      })
-
+      const res = await fetch(`/api/skills/${skillId}`, { method: 'DELETE' })
       if (res.ok) {
-        toast({
-          title: 'Keahlian berhasil dihapus',
-          description: 'Keahlian telah dihapus dari profil Anda',
-        })
+        toast({ title: 'Keahlian berhasil dihapus' })
         loadData()
       }
-    } catch (error) {
-      console.error('Error deleting skill:', error)
-    }
+    } catch (error) { console.error(error) }
   }
 
   return (
@@ -917,140 +888,25 @@ function SkillsManagement({ currentUser, skills, loadData }: any) {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-2xl font-bold">Kelola Keahlian</h3>
-          <p className="text-gray-600">Tambahkan keahlian yang Anda tawarkan atau butuhkan</p>
         </div>
-        <Button 
-          className="bg-indigo-600 hover:bg-indigo-700"
-          onClick={() => setShowAddSkill(!showAddSkill)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Keahlian
-        </Button>
+        <Button onClick={() => setShowAddSkill(!showAddSkill)}><Plus className="w-4 h-4 mr-2" />Tambah Keahlian</Button>
       </div>
-
       {showAddSkill && (
-        <Card className="border-2 border-indigo-200">
-          <CardHeader>
-            <CardTitle>Tambah Keahlian Baru</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Nama Keahlian</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                    placeholder="Contoh: JavaScript, Desain Grafik"
-                    value={formData.skillName}
-                    onChange={(e) => setFormData({...formData, skillName: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Kategori</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                    placeholder="Contoh: Programming, Desain, Bisnis"
-                    value={formData.skillCategory}
-                    onChange={(e) => setFormData({...formData, skillCategory: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Tingkat</label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                    value={formData.skillLevel}
-                    onChange={(e) => setFormData({...formData, skillLevel: e.target.value as any})}
-                  >
-                    <option value="Beginner">Pemula</option>
-                    <option value="Intermediate">Menengah</option>
-                    <option value="Expert">Ahli</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Tipe</label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-600"
-                    value={formData.type}
-                    onChange={(e) => setFormData({...formData, type: e.target.value as any})}
-                  >
-                    <option value="OFFERED">Ditawarkan (Saya bisa mengajar)</option>
-                    <option value="NEEDED">Dicari (Saya ingin belajar)</option>
-                  </select>
-                </div>
+        <Card><CardContent className="pt-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="text-sm mb-1 block">Nama Keahlian</label><input type="text" className="w-full px-3 py-2 border rounded" value={formData.skillName} onChange={(e) => setFormData({...formData, skillName: e.target.value})} required /></div>
+                <div><label className="text-sm mb-1 block">Kategori</label><input type="text" className="w-full px-3 py-2 border rounded" value={formData.skillCategory} onChange={(e) => setFormData({...formData, skillCategory: e.target.value})} required /></div>
+                <div><label className="text-sm mb-1 block">Tingkat</label><select className="w-full px-3 py-2 border rounded" value={formData.skillLevel} onChange={(e) => setFormData({...formData, skillLevel: e.target.value as any})}><option value="Beginner">Pemula</option><option value="Intermediate">Menengah</option><option value="Expert">Ahli</option></select></div>
+                <div><label className="text-sm mb-1 block">Tipe</label><select className="w-full px-3 py-2 border rounded" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value as any})}><option value="OFFERED">Ditawarkan</option><option value="NEEDED">Dicari</option></select></div>
               </div>
-              <div className="flex gap-2">
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
-                  Simpan Keahlian
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={() => setShowAddSkill(false)}
-                >
-                  Batal
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              <div className="flex gap-2"><Button type="submit">Simpan</Button><Button type="button" variant="outline" onClick={() => setShowAddSkill(false)}>Batal</Button></div>
+          </form>
+        </CardContent></Card>
       )}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Offered Skills */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Badge className="bg-indigo-600">Ditawarkan</Badge>
-              Keahlian Saya
-            </CardTitle>
-            <CardDescription>Keahlian yang Anda bisa ajarkan kepada orang lain</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {userSkills.filter((s: Skill) => s.type === 'OFFERED').length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>Belum ada keahlian ditawarkan</p>
-                <p className="text-sm mt-2">Tambahkan keahlian untuk mulai bertukar</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {userSkills.filter((s: Skill) => s.type === 'OFFERED').map((skill: Skill) => (
-                  <SkillCard key={skill.id} skill={skill} onDelete={handleDelete} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Needed Skills */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Badge className="bg-emerald-600">Dicari</Badge>
-              Keahlian yang Dibutuhkan
-            </CardTitle>
-            <CardDescription>Keahlian yang Anda ingin pelajari dari orang lain</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {userSkills.filter((s: Skill) => s.type === 'NEEDED').length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>Belum ada keahlian dicari</p>
-                <p className="text-sm mt-2">Tambahkan keahlian untuk menemukan guru</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {userSkills.filter((s: Skill) => s.type === 'NEEDED').map((skill: Skill) => (
-                  <SkillCard key={skill.id} skill={skill} onDelete={handleDelete} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Card><CardHeader><CardTitle><Badge className="bg-indigo-600">Ditawarkan</Badge> Keahlian Saya</CardTitle></CardHeader><CardContent>{userSkills.filter((s: Skill) => s.type === 'OFFERED').map((skill: Skill) => (<SkillCard key={skill.id} skill={skill} onDelete={handleDelete} />))}</CardContent></Card>
+        <Card><CardHeader><CardTitle><Badge className="bg-emerald-600">Dicari</Badge> Keahlian Dicari</CardTitle></CardHeader><CardContent>{userSkills.filter((s: Skill) => s.type === 'NEEDED').map((skill: Skill) => (<SkillCard key={skill.id} skill={skill} onDelete={handleDelete} />))}</CardContent></Card>
       </div>
     </div>
   )
@@ -1065,15 +921,8 @@ function MatchingSystem({ currentUser, skills, users, swapRequests, loadData }: 
     setLoading(true)
     try {
       const res = await fetch(`/api/matches?userId=${currentUser?.id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setMatches(data)
-      }
-    } catch (error) {
-      console.error('Error finding matches:', error)
-    } finally {
-      setLoading(false)
-    }
+      if (res.ok) setMatches(await res.json())
+    } catch (error) { console.error(error) } finally { setLoading(false) }
   }
 
   const sendSwapRequest = async (match: any) => {
@@ -1082,353 +931,116 @@ function MatchingSystem({ currentUser, skills, users, swapRequests, loadData }: 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userAId: currentUser?.id,
-          userBId: match.userBId,
-          skillAId: match.mySkillId,
-          skillBId: match.theirSkillId,
-          matchScore: match.matchScore,
-          message: `Halo, saya tertarik untuk bertukar keahlian!`
+          userAId: currentUser?.id, userBId: match.userBId, skillAId: match.mySkillId, skillBId: match.theirSkillId, matchScore: match.matchScore, message: `Halo, saya tertarik barter!`
         })
       })
-
-      if (res.ok) {
-        toast({
-          title: 'Permintaan pertukaran dikirim',
-          description: 'Menunggu respons dari pengguna lain',
-        })
-        loadData()
-      }
-    } catch (error) {
-      console.error('Error sending swap request:', error)
-    }
+      if (res.ok) { toast({ title: 'Permintaan dikirim' }); loadData() }
+    } catch (error) { console.error(error) }
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-2xl font-bold">Cari Cocok</h3>
-          <p className="text-gray-600">Temukan pengguna dengan keahlian yang cocok dengan kebutuhan Anda</p>
-        </div>
-        <Button 
-          className="bg-indigo-600 hover:bg-indigo-700"
-          onClick={findMatches}
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Mencari...
-            </>
-          ) : (
-            <>
-              <Search className="w-4 h-4 mr-2" />
-              Cari Pertandingan
-            </>
-          )}
-        </Button>
+        <h3 className="text-2xl font-bold">Cari Cocok</h3>
+        <Button onClick={findMatches} disabled={loading}>{loading ? 'Mencari...' : 'Cari Pertandingan'}</Button>
       </div>
-
-      {matches.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-            <h4 className="text-lg font-semibold mb-2">Belum ada pencarian</h4>
-            <p className="text-gray-600 mb-4">Klik tombol "Cari Pertandingan" untuk menemukan pengguna yang cocok</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {matches.map((match: any, index: number) => (
-            <MatchCard 
-              key={index} 
-              match={match} 
-              currentUser={currentUser}
-              users={users}
-              onRequestSwap={sendSwapRequest}
-              existingRequests={swapRequests}
-            />
-          ))}
-        </div>
-      )}
+      <div className="space-y-4">
+        {matches.map((match: any, index: number) => (
+          <MatchCard key={index} match={match} currentUser={currentUser} users={users} onRequestSwap={sendSwapRequest} existingRequests={swapRequests} />
+        ))}
+      </div>
     </div>
   )
 }
 
 // Swap Requests List Component
 function SwapRequestsList({ currentUser, swapRequests, users, loadData }: any) {
-  const userSwaps = swapRequests.filter(
-    (s: SwapRequest) => s.userAId === currentUser?.id || s.userBId === currentUser?.id
-  )
+  const userSwaps = swapRequests.filter((s: SwapRequest) => s.userAId === currentUser?.id || s.userBId === currentUser?.id)
 
   const handleUpdateState = async (swapId: string, newState: string) => {
     try {
-      const res = await fetch(`/api/swaps/${swapId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: newState })
-      })
-
-      if (res.ok) {
-        toast({
-          title: 'Status berhasil diperbarui',
-          description: `Status pertukaran telah berubah`,
-        })
-        loadData()
-      }
-    } catch (error) {
-      console.error('Error updating swap state:', error)
-    }
-  }
-
-  const handleSwapAction = async (swapId: string, action: 'ACCEPT' | 'REJECT') => {
-    await handleUpdateState(swapId, action)
-  }
-
-  if (userSwaps.length === 0) {
-    return (
-      <Card>
-        <CardContent className="text-center py-12">
-          <ArrowRightLeft className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <h4 className="text-lg font-semibold mb-2">Belum ada pertukaran</h4>
-          <p className="text-gray-600">Mulai cari pertandingan untuk mengirim permintaan pertukaran</p>
-        </CardContent>
-      </Card>
-    )
+      const res = await fetch(`/api/swaps/${swapId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: newState }) })
+      if (res.ok) { toast({ title: 'Status diperbarui' }); loadData() }
+    } catch (error) { console.error(error) }
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-2xl font-bold">Pertukaran Saya</h3>
-        <p className="text-gray-600">Kelola semua pertukaran keahlian Anda</p>
-      </div>
-
+      <h3 className="text-2xl font-bold">Pertukaran Saya</h3>
       <Tabs defaultValue="all" className="w-full">
-        <TabsList>
-          <TabsTrigger value="all">Semua</TabsTrigger>
-          <TabsTrigger value="pending">Menunggu</TabsTrigger>
-          <TabsTrigger value="active">Aktif</TabsTrigger>
-          <TabsTrigger value="completed">Selesai</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="space-y-3">
-          {userSwaps.map((swap: SwapRequest) => (
-            <SwapRequestCard 
-              key={swap.id} 
-              swap={swap} 
-              currentUser={currentUser} 
-              users={users}
-              onUpdateState={handleSwapAction}
-            />
-          ))}
-        </TabsContent>
-
-        <TabsContent value="pending" className="space-y-3">
-          {userSwaps.filter((s: SwapRequest) => s.state === 'PROPOSED').map((swap: SwapRequest) => (
-            <SwapRequestCard 
-              key={swap.id} 
-              swap={swap} 
-              currentUser={currentUser} 
-              users={users}
-              onUpdateState={handleSwapAction}
-            />
-          ))}
-        </TabsContent>
-
-        <TabsContent value="active" className="space-y-3">
-          {userSwaps.filter((s: SwapRequest) => ['ACCEPTED', 'IN_PROGRESS'].includes(s.state)).map((swap: SwapRequest) => (
-            <SwapRequestCard 
-              key={swap.id} 
-              swap={swap} 
-              currentUser={currentUser} 
-              users={users}
-              onUpdateState={handleUpdateState}
-            />
-          ))}
-        </TabsContent>
-
-        <TabsContent value="completed" className="space-y-3">
-          {userSwaps.filter((s: SwapRequest) => ['COMPLETED', 'REJECTED'].includes(s.state)).map((swap: SwapRequest) => (
-            <SwapRequestCard 
-              key={swap.id} 
-              swap={swap} 
-              currentUser={currentUser} 
-              users={users}
-            />
-          ))}
-        </TabsContent>
+        <TabsList><TabsTrigger value="all">Semua</TabsTrigger><TabsTrigger value="pending">Menunggu</TabsTrigger><TabsTrigger value="active">Aktif</TabsTrigger><TabsTrigger value="completed">Selesai</TabsTrigger></TabsList>
+        <TabsContent value="all" className="space-y-3">{userSwaps.map((swap: SwapRequest) => (<SwapRequestCard key={swap.id} swap={swap} currentUser={currentUser} users={users} onUpdateState={handleUpdateState} />))}</TabsContent>
+        <TabsContent value="pending" className="space-y-3">{userSwaps.filter((s: SwapRequest) => s.state === 'PROPOSED').map((swap: SwapRequest) => (<SwapRequestCard key={swap.id} swap={swap} currentUser={currentUser} users={users} onUpdateState={handleUpdateState} />))}</TabsContent>
+        <TabsContent value="active" className="space-y-3">{userSwaps.filter((s: SwapRequest) => ['ACCEPTED', 'IN_PROGRESS'].includes(s.state)).map((swap: SwapRequest) => (<SwapRequestCard key={swap.id} swap={swap} currentUser={currentUser} users={users} onUpdateState={handleUpdateState} />))}</TabsContent>
+        <TabsContent value="completed" className="space-y-3">{userSwaps.filter((s: SwapRequest) => ['COMPLETED', 'REJECTED'].includes(s.state)).map((swap: SwapRequest) => (<SwapRequestCard key={swap.id} swap={swap} currentUser={currentUser} users={users} />))}</TabsContent>
       </Tabs>
     </div>
   )
 }
 
-// Helper Components
+// HELPER COMPONENTS
 function SkillCard({ skill, onDelete }: { skill: Skill, onDelete: (id: string) => void }) {
-  const levelColors = {
-    Beginner: 'bg-gray-100 text-gray-700',
-    Intermediate: 'bg-blue-100 text-blue-700',
-    Expert: 'bg-purple-100 text-purple-700'
-  }
-
   return (
     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
       <div>
         <h4 className="font-semibold">{skill.skillName}</h4>
-        <div className="flex items-center gap-2 mt-1">
-          <Badge className="text-xs">{skill.skillCategory}</Badge>
-          <Badge className={`text-xs ${levelColors[skill.skillLevel]}`}>
-            {skill.skillLevel}
-          </Badge>
-        </div>
+        <div className="flex gap-2 mt-1"><Badge className="text-xs">{skill.skillCategory}</Badge><Badge className="text-xs bg-gray-200 text-gray-800">{skill.skillLevel}</Badge></div>
       </div>
-      <Button 
-        size="sm" 
-        variant="ghost" 
-        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-        onClick={() => onDelete(skill.id)}
-      >
-        Hapus
-      </Button>
+      <Button size="sm" variant="ghost" className="text-red-600" onClick={() => onDelete(skill.id)}>Hapus</Button>
     </div>
   )
 }
 
 function MatchCard({ match, currentUser, users, onRequestSwap, existingRequests }: any) {
   const userB = users.find((u: User) => u.id === match.userBId)
-  const existingRequest = existingRequests.find((r: SwapRequest) => 
-    (r.userAId === currentUser?.id && r.userBId === match.userBId && 
-     r.skillAId === match.mySkillId && r.skillBId === match.theirSkillId)
-  )
-
+  const existingRequest = existingRequests.find((r: SwapRequest) => (r.userAId === currentUser?.id && r.userBId === match.userBId && r.skillAId === match.mySkillId && r.skillBId === match.theirSkillId))
   return (
-    <Card className="border-2 border-indigo-100 hover:border-indigo-300 transition-colors">
+    <Card>
       <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="w-12 h-12">
-              <AvatarFallback className="bg-indigo-100 text-indigo-600 font-semibold">
-                {userB?.name?.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h4 className="font-semibold text-lg">{userB?.name}</h4>
-              <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                <span className="text-sm">{userB?.rating.toFixed(1)}</span>
-              </div>
-            </div>
-          </div>
-          <Badge className="bg-indigo-600">
-            {(match.matchScore * 100).toFixed(0)}% Cocok
-          </Badge>
+        <div className="flex justify-between mb-4">
+          <div className="flex items-center gap-4"><Avatar><AvatarFallback>{userB?.name?.charAt(0)}</AvatarFallback></Avatar><div><h4 className="font-semibold">{userB?.name}</h4></div></div>
+          <Badge>{(match.matchScore * 100).toFixed(0)}% Cocok</Badge>
         </div>
-
-        <div className="bg-gray-50 rounded-lg p-4 mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <p className="text-sm text-gray-600 mb-1">Anda tawarkan:</p>
-              <p className="font-medium text-indigo-600">{match.mySkillName}</p>
-            </div>
-            <ArrowRightLeft className="w-6 h-6 text-gray-400 mx-4" />
-            <div className="flex-1 text-right">
-              <p className="text-sm text-gray-600 mb-1">Mereka tawarkan:</p>
-              <p className="font-medium text-emerald-600">{match.theirSkillName}</p>
-            </div>
-          </div>
+        <div className="bg-gray-50 p-4 mb-4 flex justify-between">
+          <div><p className="text-sm">Anda tawarkan:</p><p className="font-medium text-indigo-600">{match.mySkillName}</p></div>
+          <div><p className="text-sm">Mereka tawarkan:</p><p className="font-medium text-emerald-600">{match.theirSkillName}</p></div>
         </div>
-
-        {existingRequest ? (
-          <Button className="w-full" disabled>
-            <Clock className="w-4 h-4 mr-2" />
-            {existingRequest.state === 'PROPOSED' ? 'Menunggu Respons' : 'Sedang Diproses'}
-          </Button>
-        ) : (
-          <Button 
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
-            onClick={() => onRequestSwap(match)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Kirim Permintaan Pertukaran
-          </Button>
-        )}
+        {existingRequest ? (<Button className="w-full" disabled>Menunggu Respons</Button>) : (<Button className="w-full" onClick={() => onRequestSwap(match)}>Kirim Permintaan</Button>)}
       </CardContent>
     </Card>
   )
 }
 
-// Swap State Badge Component
 function SwapStateBadge({ state }: { state: string }) {
-  const stateConfig = {
-    PROPOSED: { label: 'Diajukan', color: 'bg-amber-100 text-amber-700', icon: Clock },
-    ACCEPTED: { label: 'Diterima', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
-    IN_PROGRESS: { label: 'Sedang Berjalan', color: 'bg-blue-100 text-blue-700', icon: Clock },
-    COMPLETED: { label: 'Selesai', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-    REJECTED: { label: 'Ditolak', color: 'bg-red-100 text-red-700', icon: XCircle }
-  }
-
-  const config = stateConfig[state as keyof typeof stateConfig]
-  const StateIcon = config.icon
-
-  return (
-    <Badge className={config.color}>
-      <StateIcon className="w-3 h-3 mr-1" />
-      {config.label}
-    </Badge>
-  )
+  return <Badge className="bg-gray-200 text-gray-800">{state}</Badge>
 }
 
 function SwapRequestCard({ swap, currentUser, users, onUpdateState, isAdmin = false }: any) {
   const userA = users.find((u: User) => u.id === swap.userAId)
   const userB = users.find((u: User) => u.id === swap.userBId)
-  
   const isCurrentUserA = swap.userAId === currentUser?.id
   const isCurrentUserB = swap.userBId === currentUser?.id
 
-  const stateConfig = {
-    PROPOSED: { label: 'Diajukan', color: 'bg-amber-100 text-amber-700', icon: Clock },
-    ACCEPTED: { label: 'Diterima', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
-    IN_PROGRESS: { label: 'Sedang Berjalan', color: 'bg-blue-100 text-blue-700', icon: Clock },
-    COMPLETED: { label: 'Selesai', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-    REJECTED: { label: 'Ditolak', color: 'bg-red-100 text-red-700', icon: XCircle }
-  }
-
-  const state = stateConfig[swap.state as keyof typeof stateConfig]
-  const StateIcon = state.icon
-
   const canAcceptReject = isCurrentUserB && swap.state === 'PROPOSED'
   const canProgress = (isCurrentUserA || isCurrentUserB) && swap.state === 'ACCEPTED'
-const canComplete = (isCurrentUserA || isCurrentUserB) && swap.state === 'IN_PROGRESS'
+  const canComplete = (isCurrentUserA || isCurrentUserB) && swap.state === 'IN_PROGRESS'
 
   return (
-    <Card className={`${state.color} border-0`}>
+    <Card className="border-l-4 border-indigo-500">
       <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="w-10 h-10">
-              <AvatarFallback className="bg-indigo-100 text-indigo-600 font-semibold">
-                {userA?.name?.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+        <div className="flex justify-between mb-3">
+          <div className="flex gap-3"><Avatar><AvatarFallback>{userA?.name?.charAt(0)}</AvatarFallback></Avatar>
             <div>
               <p className="font-semibold">{userA?.name}</p>
-              <p className="text-sm text-gray-600">
-                {isCurrentUserA ? 'Anda' : 'Mereka'} tawarkan: <span className="font-medium text-indigo-600">{swap.skillAName}</span>
-              </p>
-              <p className="text-sm text-gray-600">
-                {isCurrentUserB ? 'Anda' : 'Mereka'} tawarkan: <span className="font-medium text-emerald-600">{swap.skillBName}</span>
-              </p>
+              <p className="text-sm">Tawar: {swap.skillAName} | Cari: {swap.skillBName}</p>
             </div>
           </div>
-          <Badge className={state.color}>
-            <StateIcon className="w-3 h-3 mr-1" />
-            {state.label}
-          </Badge>
+          <Badge>{swap.state}</Badge>
         </div>
 
-        {/* --- KODE KONTAK PARTNER DIMASUKKAN DI SINI --- */}
+        {/* LOGIKA PRIVASI EMAIL: Hanya tampil jika sudah ACCEPTED ke atas */}
         {['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(swap.state) && (
-          <div className="mt-3 mb-4 p-3 bg-white/60 rounded-md border border-indigo-100">
+          <div className="mt-3 mb-4 p-3 bg-indigo-50 rounded-md border border-indigo-100">
             <p className="text-xs text-gray-500 font-medium mb-1">Kontak Partner Swap:</p>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-indigo-700">
@@ -1437,73 +1049,18 @@ const canComplete = (isCurrentUserA || isCurrentUserB) && swap.state === 'IN_PRO
             </div>
           </div>
         )}
-        {/* --------------------------------------------- */}
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">Match: {(swap.matchScore * 100).toFixed(0)}%</Badge>
+        <div className="flex justify-between items-center">
+          <Badge variant="outline">Match: {(swap.matchScore * 100).toFixed(0)}%</Badge>
+          <div className="flex gap-2">
+            {canAcceptReject && (
+              <><Button size="sm" className="bg-emerald-600" onClick={() => onUpdateState(swap.id, 'ACCEPTED')}>Terima</Button><Button size="sm" variant="destructive" onClick={() => onUpdateState(swap.id, 'REJECTED')}>Tolak</Button></>
+            )}
+            {canProgress && (<Button size="sm" className="bg-blue-600" onClick={() => onUpdateState(swap.id, 'IN_PROGRESS')}>Mulai Swap</Button>)}
+            {canComplete && (<Button size="sm" className="bg-green-600" onClick={() => onUpdateState(swap.id, 'COMPLETED')}>Selesaikan</Button>)}
           </div>
-
-          {canAcceptReject && (
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                className="bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => onUpdateState(swap.id, 'ACCEPTED')}
-              >
-                <CheckCircle2 className="w-4 h-4 mr-1" />
-                Terima
-              </Button>
-              <Button 
-                size="sm" 
-                variant="destructive"
-                onClick={() => onUpdateState(swap.id, 'REJECTED')}
-              >
-                <XCircle className="w-4 h-4 mr-1" />
-                Tolak
-              </Button>
-            </div>
-          )}
-
-          {canProgress && (
-            <Button 
-              size="sm" 
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => onUpdateState(swap.id, 'IN_PROGRESS')}
-            >
-              <Clock className="w-4 h-4 mr-1" />
-              Mulai Pertukaran
-            </Button>
-          )}
-
-          {canComplete && (
-            <Button 
-              size="sm" 
-              className="bg-green-600 hover:bg-green-700"
-              onClick={() => onUpdateState(swap.id, 'COMPLETED')}
-            >
-              <CheckCircle2 className="w-4 h-4 mr-1" />
-              Selesaikan
-            </Button>
-          )}
-
-          {isAdmin && swap.state === 'PROPOSED' && (
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={() => onUpdateState(swap.id, 'ACCEPTED')}
-              >
-                <CheckCircle2 className="w-4 h-4 mr-1" />
-                Approve
-              </Button>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
   )
 }
-
-// Helper function for swap actions di hapus. ada di notebook codenya
-
