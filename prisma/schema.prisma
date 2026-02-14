@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String   @default("USER") // USER or ADMIN
+  bio       String?
+  rating    Float    @default(0)
+  avatar    String?
+  isActive  Boolean  @default(true) // true = active, false = suspended
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills       Skill[]
+  swapRequestsAsUserA SwapRequest[] @relation("UserA_Swaps")
+  swapRequestsAsUserB SwapRequest[] @relation("UserB_Swaps")
+}
+
+model Skill {
+  id           String   @id @default(cuid())
+  userId       String
+  skillName    String
+  skillCategory String
+  skillLevel   String   // Beginner, Intermediate, Expert
+  type         String   // OFFERED or NEEDED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([skillCategory])
+}
+
+model SwapRequest {
+  id         String    @id @default(cuid())
+  userAId    String
+  userBId    String
+  skillAId   String    // Skill offered by UserA
+  skillBId   String    // Skill needed by UserA (offered by UserB)
+  matchScore Float
+  state      String    @default("PROPOSED") // PROPOSED, ACCEPTED, IN_PROGRESS, COMPLETED, REJECTED
+  message    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  userA User @relation("UserA_Swaps", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("UserB_Swaps", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@index([userAId])
+  @@index([userBId])
+  @@index([state])
+}
