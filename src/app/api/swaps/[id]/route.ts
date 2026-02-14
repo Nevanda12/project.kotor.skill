@@ -46,13 +46,24 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Opsional untuk Next.js 15: const { id } = await params;
+    
     await db.swapRequest.delete({
       where: { id: params.id }
     })
 
     return NextResponse.json({ message: 'Swap request deleted successfully' })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting swap request:', error)
+    
+    // Cek jika errornya karena ID tidak ditemukan (Prisma Error P2025)
+    if (error?.code === 'P2025') {
+      return NextResponse.json(
+        { error: 'Swap request not found' },
+        { status: 404 }
+      )
+    }
+
     return NextResponse.json(
       { error: 'Failed to delete swap request' },
       { status: 500 }
