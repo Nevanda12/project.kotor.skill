@@ -49,19 +49,32 @@ export async function GET(request: NextRequest) {
       where: { id: { in: Array.from(skillIds) } }
     })
 
-    const skillMap = new Map(skills.map(s => [s.id, s]))
-
     // Transform to include skill and user names
+const skillMap = new Map<string, any>(skills.map(s => [s.id, s]));
     const transformedSwaps = swaps.map(swap => {
       const skillA = skillMap.get(swap.skillAId)
       const skillB = skillMap.get(swap.skillBId)
+
+      // 1. Variabel isProposed WAJIB dideklarasikan di sini
+      const isProposed = swap.state === 'PROPOSED';
 
       return {
         ...swap,
         userAName: swap.userA.name,
         userBName: swap.userB.name,
         skillAName: skillA?.skillName || 'Unknown',
-        skillBName: skillB?.skillName || 'Unknown'
+        
+        // 2. Pastikan ada KOMA di ujung baris ini
+        skillBName: skillB?.skillName || 'Unknown', 
+        
+        userA: {
+          ...swap.userA,
+          email: isProposed ? null : swap.userA.email
+        },
+        userB: {
+          ...swap.userB,
+          email: isProposed ? null : swap.userB.email
+        }
       }
     })
 

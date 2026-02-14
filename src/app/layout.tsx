@@ -14,24 +14,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "SkillSwap",
+  description: "Platform pertukaran keahlian (SkillSwap) dengan fitur AI Matchmaking.",
+  keywords: ["SkillSwap", "Tukar Keahlian", "Next.js", "TypeScript", "Matchmaking", "Platform"],
+  authors: [{ name: "SkillSwap Team" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    // Biarkan link ini untuk sementara. 
+    // Nanti kamu bisa menggantinya dengan path lokal seperti "/logo.png" atau "/favicon.ico"
+    icon: "https://cdn.jsdelivr.net/npm/@tabler/icons@latest/icons/transfer.svg",
   },
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "SkillSwap",
+    description: "Platform pertukaran keahlian dengan fitur AI Matchmaking.",
+    url: "http://localhost:3000",
+    siteName: "SkillSwap",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    title: "SkillSwap",
+    description: "Platform pertukaran keahlian dengan fitur AI Matchmaking.",
   },
 };
 

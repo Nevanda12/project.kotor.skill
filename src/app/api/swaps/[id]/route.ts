@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
+// Tambahkan mapping transisi yang diizinkan di luar fungsi
+// agar variabel ini tidak perlu dibuat ulang setiap kali API dipanggil
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  PROPOSED: ['ACCEPTED', 'REJECTED'],
+  ACCEPTED: ['IN_PROGRESS', 'REJECTED'],
+  IN_PROGRESS: ['COMPLETED', 'REJECTED'],
+  COMPLETED: [],
+  REJECTED: []
+};
+
 // PATCH /api/swaps/[id] - Update swap request state
 export async function PATCH(
   request: NextRequest,
@@ -10,6 +20,7 @@ export async function PATCH(
     const body = await request.json()
     const { state } = body
 
+    // Validasi dasar: Pastikan request body memiliki data 'state'
     if (!state) {
       return NextResponse.json(
         { error: 'State is required' },
@@ -17,20 +28,38 @@ export async function PATCH(
       )
     }
 
-    const validStates = ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'REJECTED']
-    if (!validStates.includes(state)) {
+    // 1. Ambil state saat ini dari database
+    const currentSwap = await db.swapRequest.findUnique({ 
+      where: { id: params.id },
+      // Optimasi: Karena kita hanya butuh mengecek state, kita tidak perlu menarik seluruh data
+      select: { state: true } 
+    });
+    
+    if (!currentSwap) {
       return NextResponse.json(
-        { error: 'Invalid state' },
-        { status: 400 }
-      )
+        { error: 'Swap request not found' }, 
+        { status: 404 }
+      );
     }
 
-    const swap = await db.swapRequest.update({
+    // 2. Validasi transisi state (Cegah loncat state!)
+    // Ambil daftar state tujuan yang diizinkan berdasarkan state saat ini
+    const allowedNextStates = VALID_TRANSITIONS[currentSwap.state] || [];
+    
+    if (!allowedNextStates.includes(state)) {
+      return NextResponse.json(
+        { error: `Invalid transition from ${currentSwap.state} to ${state}` },
+        { status: 400 }
+      );
+    }
+
+    // 3. Lakukan update jika semua validasi lolos
+    const updatedSwap = await db.swapRequest.update({
       where: { id: params.id },
       data: { state }
     })
 
-    return NextResponse.json(swap)
+    return NextResponse.json(updatedSwap)
   } catch (error) {
     console.error('Error updating swap request:', error)
     return NextResponse.json(

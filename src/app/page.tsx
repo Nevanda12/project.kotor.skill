@@ -316,6 +316,28 @@ function UserDashboard({ currentUser, activeTab, skills, swapRequests, users, se
   const activeSwaps = userSwaps.filter(s => ['ACCEPTED', 'IN_PROGRESS'].includes(s.state))
   const completedSwaps = userSwaps.filter(s => s.state === 'COMPLETED')
 
+  // 👇 TAMBAHKAN FUNGSI INI DI SINI 👇
+  const handleSwapAction = async (swapId: string, action: 'ACCEPTED' | 'REJECTED') => {
+    try {
+      const res = await fetch(`/api/swaps/${swapId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: action })
+      })
+
+      if (res.ok) {
+        toast({
+          title: 'Status diperbarui',
+          description: `Pertukaran telah ${action === 'ACCEPTED' ? 'Diterima' : 'Ditolak'}`,
+        })
+        loadData() // Memanggil refresh UI seketika!
+      }
+    } catch (error) {
+      console.error('Error updating swap:', error)
+    }
+  }
+  // 👆 SAMPAI SINI 👆
+
   if (activeTab === 'dashboard') {
     return (
       <div className="space-y-6">
@@ -383,7 +405,7 @@ function UserDashboard({ currentUser, activeTab, skills, swapRequests, users, se
                         <Button 
                           size="sm" 
                           className="bg-emerald-600 hover:bg-emerald-700"
-                          onClick={() => handleSwapAction(swap.id, 'ACCEPT')}
+                          onClick={() => handleSwapAction(swap.id, 'ACCEPTED')}
                         >
                           <CheckCircle2 className="w-4 h-4 mr-1" />
                           Terima
@@ -429,7 +451,7 @@ function UserDashboard({ currentUser, activeTab, skills, swapRequests, users, se
                 {userSwaps.slice(0, 5).map((swap: SwapRequest) => (
                   <SwapRequestCard key={swap.id} swap={swap} currentUser={currentUser} users={users} />
                 ))}
-              </div>
+ </div>
             )}
           </CardContent>
         </Card>
@@ -1375,8 +1397,8 @@ function SwapRequestCard({ swap, currentUser, users, onUpdateState, isAdmin = fa
   const StateIcon = state.icon
 
   const canAcceptReject = isCurrentUserB && swap.state === 'PROPOSED'
-  const canProgress = isCurrentUserA && swap.state === 'ACCEPTED'
-  const canComplete = isCurrentUserB && swap.state === 'IN_PROGRESS'
+  const canProgress = (isCurrentUserA || isCurrentUserB) && swap.state === 'ACCEPTED'
+const canComplete = (isCurrentUserA || isCurrentUserB) && swap.state === 'IN_PROGRESS'
 
   return (
     <Card className={`${state.color} border-0`}>
@@ -1403,6 +1425,19 @@ function SwapRequestCard({ swap, currentUser, users, onUpdateState, isAdmin = fa
             {state.label}
           </Badge>
         </div>
+
+        {/* --- KODE KONTAK PARTNER DIMASUKKAN DI SINI --- */}
+        {['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(swap.state) && (
+          <div className="mt-3 mb-4 p-3 bg-white/60 rounded-md border border-indigo-100">
+            <p className="text-xs text-gray-500 font-medium mb-1">Kontak Partner Swap:</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-indigo-700">
+                {isCurrentUserA ? userB?.email : userA?.email}
+              </span>
+            </div>
+          </div>
+        )}
+        {/* --------------------------------------------- */}
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1470,22 +1505,5 @@ function SwapRequestCard({ swap, currentUser, users, onUpdateState, isAdmin = fa
   )
 }
 
-// Helper function for swap actions
-async function handleSwapAction(swapId: string, action: 'ACCEPT' | 'REJECT' | 'IN_PROGRESS' | 'COMPLETED') {
-  try {
-    const res = await fetch(`/api/swaps/${swapId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state: action })
-    })
+// Helper function for swap actions di hapus. ada di notebook codenya
 
-    if (res.ok) {
-      toast({
-        title: 'Status berhasil diperbarui',
-        description: `Pertukaran telah ${action === 'ACCEPTED' ? 'diterima' : action === 'REJECTED' ? 'ditolak' : action === 'IN_PROGRESS' ? 'dimulai' : 'diselesaikan'}`,
-      })
-    }
-  } catch (error) {
-    console.error('Error updating swap:', error)
-  }
-}
