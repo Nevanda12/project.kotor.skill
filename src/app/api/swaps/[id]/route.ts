@@ -72,29 +72,30 @@ export async function PATCH(
 // DELETE /api/swaps/[id] - Delete a swap request
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // 1. Ubah tipe params menjadi Promise
 ) {
   try {
-    // Opsional untuk Next.js 15: const { id } = await params;
+    // 2. Wajib di-await dulu sebelum mengambil id
+    const resolvedParams = await params; 
     
-    await db.swapRequest.delete({
-      where: { id: params.id }
+    await db.skill.delete({
+      where: { id: resolvedParams.id } // 3. Gunakan id yang sudah di-resolve
     })
 
-    return NextResponse.json({ message: 'Swap request deleted successfully' })
+    return NextResponse.json({ message: 'Skill deleted successfully' })
   } catch (error: any) {
-    console.error('Error deleting swap request:', error)
+    console.error('Error deleting skill:', error)
     
-    // Cek jika errornya karena ID tidak ditemukan (Prisma Error P2025)
+    // Penanganan jika ID tidak ditemukan di database
     if (error?.code === 'P2025') {
       return NextResponse.json(
-        { error: 'Swap request not found' },
+        { error: 'Skill not found' },
         { status: 404 }
       )
     }
 
     return NextResponse.json(
-      { error: 'Failed to delete swap request' },
+      { error: 'Failed to delete skill' },
       { status: 500 }
     )
   }

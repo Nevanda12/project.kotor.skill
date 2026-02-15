@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 // POST /api/seed - Seed database with sample data
 export async function POST(request: NextRequest) {
@@ -9,12 +10,16 @@ export async function POST(request: NextRequest) {
     await db.skill.deleteMany({})
     await db.user.deleteMany({})
 
+    // Buat satu password default untuk semua akun dummy: 'password123'
+    const defaultPassword = await bcrypt.hash('password123', 10)
+
     // Create sample users
     const users = await Promise.all([
       db.user.create({
         data: {
           name: 'Budi Santoso',
           email: 'budi@example.com',
+          password: defaultPassword, 
           role: 'USER',
           bio: 'Web developer dengan pengalaman 5 tahun. Suka berbagi ilmu pemrograman.',
           rating: 4.7,
@@ -25,6 +30,7 @@ export async function POST(request: NextRequest) {
         data: {
           name: 'Siti Rahayu',
           email: 'siti@example.com',
+          password: defaultPassword, 
           role: 'USER',
           bio: 'Desainer grafis profesional. Ahli dalam UI/UX design.',
           rating: 4.9,
@@ -35,6 +41,7 @@ export async function POST(request: NextRequest) {
         data: {
           name: 'Ahmad Wijaya',
           email: 'ahmad@example.com',
+          password: defaultPassword, 
           role: 'USER',
           bio: 'Digital marketer dan content writer. Berpengalaman dalam SEO.',
           rating: 4.5,
@@ -45,6 +52,7 @@ export async function POST(request: NextRequest) {
         data: {
           name: 'Dewi Kartika',
           email: 'dewi@example.com',
+          password: defaultPassword, 
           role: 'USER',
           bio: 'Data scientist dan machine learning enthusiast.',
           rating: 4.8,
@@ -55,6 +63,7 @@ export async function POST(request: NextRequest) {
         data: {
           name: 'Rudi Hermawan',
           email: 'rudi@example.com',
+          password: defaultPassword, 
           role: 'USER',
           bio: 'Fotografer dan video editor profesional.',
           rating: 4.6,
@@ -65,6 +74,7 @@ export async function POST(request: NextRequest) {
         data: {
           name: 'Admin Platform',
           email: 'admin@skillswap.com',
+          password: defaultPassword, 
           role: 'ADMIN',
           bio: 'Administrator platform SkillSwap.',
           rating: 5.0,
@@ -73,8 +83,8 @@ export async function POST(request: NextRequest) {
       })
     ])
 
-    // Create sample skills for each user
-    const skills = []
+    // PERBAIKAN: Beri tahu TypeScript bahwa array ini akan menampung Promise/Data apa saja
+    const skills: any[] = []
 
     // Budi's skills
     skills.push(
